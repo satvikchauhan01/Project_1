@@ -12,7 +12,7 @@
         this.data=null
         this.message=message 
         this.success=false
-        this.errors= errors
+        this.errors= error
         //assigns default values
         if(stack){
             this.stack=stack

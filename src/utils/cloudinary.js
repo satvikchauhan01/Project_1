@@ -21,8 +21,9 @@ const uploadOnCloud= async (localFilePath) =>{
             resource_type: "auto"              //type of resource image video etc
         })
         //file has beeen uploaded now 
-        console.log("File is uploaded on the cloudinary", response.url);            //response has so many attributes .url will return the public url
-        
+        //console.log("File is uploaded on the cloudinary", response.url);            //response has so many attributes .url will return the public url
+        fs.unlinkSync(localFilePath)  //removes after uploading //write after writing controller
+        return response;
     }
     catch(error){ //so if upload failed
         fs.unlinkSync(localFilePath)            //removes the locally saved(locally means backend server not user) temp file as the upload operation failed

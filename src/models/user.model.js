@@ -30,7 +30,7 @@ const userSchema=new Schema(
             required:true,
         },
         coverImage: {
-            type: string
+            type: String
         },
         watchHistory:[
             {
@@ -57,8 +57,8 @@ userSchema.pre("save", async function(next) {   //means before saving the docume
     if(this.isModified("password")){  
         //this if ensures passowrd is encrypted only when password field is updated
 
-        this.password=bcrypt.hash(this.password, 8)         //what we have to hash and number of rounds
-    next();
+        this.password= await bcrypt.hash(this.password, 8)         //what we have to hash and number of rounds
+         next();
     }
 }) 
 userSchema.methods.isPasswordCorrect= async function (password){//  isPasswordCorrect ek custom function hai jo har user document ke saath attach ho jayega.
