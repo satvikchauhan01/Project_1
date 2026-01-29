@@ -1,7 +1,7 @@
 //Line 6
-import {asyncHandler} from "../utils/asyncHandler.js";  //import the basic async handler utillity from the utills
+import { asyncHandler } from "../utils/asyncHandler.js";  //import the basic async handler utillity from the utills
 import { ApiError } from "../utils/ApiError.js";
-import {User} from "../models/user.model.js"
+import { User } from "../models/user.model.js"
 import { uploadOnCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -126,5 +126,104 @@ const registerUser=asyncHandler(async(req, res) =>{
         )
 })
 
-export {registerUser}
+const generateAccessAndRefreshToken =async(userId) =>{
+    try {
+        const user1 = await User.findById(userId);
+
+        const accessToken = user1.generateAccessToken();      //both needs to send to user side             
+        const refrshToken = user1.generateRefreshToken();  
+       //refreshToken need to stored in db also
+       user1.refrshToken=refreshToken;
+       await user1.save({ validateBeforeSave : false})    //because on saving the mongodb needs all the fields, but here you are logging in so you already have all the fields so just keep it false
+
+        return {accessToken, refrshToken}                 //return it to send it to the user
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong");
+    }
+}
+const loginUser= asyncHandler(async(req, res) =>{
+    //steps:
+    //1. fetch the data from req.body
+    //2. give access based on username or email
+    //3. find the user in the database (if not req is denied)
+    //4. if there do password check (if wrong prompt password is wrong)
+    //5. generate access and refresh token and send it to user
+    //6. send cookie and send a respone the login is successfull
+
+    //1. fetch data from req.body
+        const {email, username, password} =req.body;  
+    //2. 
+        if(!username || !email){
+            throw new ApiError(400, "username or email is required");
+        }
+        //user can login with both usename and email so create for both 
+    //3. 
+        const user = await User.findOne({          //db operation use await          //Capital(User) is the mongoose object 
+            $or: [{username}, {email}]             //finds a value for any of the variables and returns the first value found
+        })
+        if(!user){
+            throw new ApiError(404, "User doesnt exist");
+        }
+    //4. 
+        const isPasswordValid = await user.isPasswordCorrect(password);
+        if(!isPasswordValid){
+            throw new ApiError(401, "Invalid user Credentials");
+        }
+    //5. 
+        const {accessToken,refreshToken} = await generateAccessAndRefreshToken(user._id)  //this function is defined above
+    //6. sending to user: 
+        const loggedInUser = await User.findById(user._id).select("-password -refreshToken");  //we do another database query because the previous user object that we created didnt had the refresh token saved
+        
+        //sending cookies:
+        const options ={
+            httpOnly: true,
+            secure: true
+            //by this these cookies cant be modified at the frontend side
+        }
+        return res.status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(200, 
+                {
+                    user: loggedInUser, accessToken, refreshToken   //we send it here also(already in cookies) because if user wnats these values or if user is using mobile application where cookies arent saved
+
+                },
+            "User logged in successfully"
+            )
+        )
+})
+
+const logoutUser= asyncHandler(async(req, res) =>{
+    //steps:  firstly auth middleware is required because this req has no idea which user has just clicked the logout 
+    //1. remove thew cookies 
+    //2. remove the refresh and access token 
+    //after the verifyJWt middleware runs now the req has access to the user:
+
+    //1: remove refresh token: 
+    await User.findByIdAndUpdate(         //captial User is the Db one which is doing search to find the user which has that id provided inside
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined           //removes the refresh token from the data base
+            }
+        },
+        {
+            new: true
+        }
+    )
+
+    //2: delete cookies: 
+    const options={
+        httpOnly:true,
+        secure: true
+    }
+    return res.status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken",options)     
+    .json(new ApiResponse(200, {}, "User logged out"))  //no data need to be send
+     
+})
+
+export {registerUser, loginUser, logoutUser}
 //Line6 end    
