@@ -74,7 +74,7 @@ const registerUser=asyncHandler(async(req, res) =>{
             }
 
         if(!avatarLocalPath){
-            throw new ApiError(400, "Avatar is required");
+            throw new ApiError(400, "Avatar is required on local");
         }
         //when you upload a file through multer, express stores the files object to the req, it looks like this: 
                 // req.files = {
@@ -99,7 +99,7 @@ const registerUser=asyncHandler(async(req, res) =>{
         const coverImage = await uploadOnCloud(coverimageLocalPath);
 
         if(!avatar){
-            throw new ApiError(400, "Avatar is required");
+            throw new ApiError(400, "Avatar was failed to upload on cloud");
         }
 
     //6: now store that link in the database through the user:
@@ -131,13 +131,15 @@ const generateAccessAndRefreshToken =async(userId) =>{
         const user1 = await User.findById(userId);
 
         const accessToken = user1.generateAccessToken();      //both needs to send to user side             
-        const refrshToken = user1.generateRefreshToken();  
+        const refreshToken = user1.generateRefreshToken();  
        //refreshToken need to stored in db also
-       user1.refrshToken=refreshToken;
+       user1.refreshToken=refreshToken;
        await user1.save({ validateBeforeSave : false})    //because on saving the mongodb needs all the fields, but here you are logging in so you already have all the fields so just keep it false
 
-        return {accessToken, refrshToken}                 //return it to send it to the user
+        return {accessToken, refreshToken}                 //return it to send it to the user
     } catch (error) {
+        console.log(error);
+        
         throw new ApiError(500, "Something went wrong");
     }
 }
@@ -151,9 +153,11 @@ const loginUser= asyncHandler(async(req, res) =>{
     //6. send cookie and send a respone the login is successfull
 
     //1. fetch data from req.body
-        const {email, username, password} =req.body;  
+        const {email, username, password} =req.body; 
+        console.log(email);
+         
     //2. 
-        if(!username || !email){
+        if(!username && !email){
             throw new ApiError(400, "username or email is required");
         }
         //user can login with both usename and email so create for both 

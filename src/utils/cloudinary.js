@@ -1,4 +1,8 @@
 //Line 5 start
+import dotenv from "dotenv";
+dotenv.config();
+//this needs seprate config reason i dont know
+
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs'    //it is a file system library given by node js(read write remove in sync, async )
 
@@ -20,6 +24,9 @@ const uploadOnCloud= async (localFilePath) =>{
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto"              //type of resource image video etc
         })
+        
+        
+        
         //file has beeen uploaded now 
         //console.log("File is uploaded on the cloudinary", response.url);            //response has so many attributes .url will return the public url
         fs.unlinkSync(localFilePath)  //removes after uploading //write after writing controller
@@ -27,6 +34,8 @@ const uploadOnCloud= async (localFilePath) =>{
     }
     catch(error){ //so if upload failed
         fs.unlinkSync(localFilePath)            //removes the locally saved(locally means backend server not user) temp file as the upload operation failed
+        console.log("Upload on cloud failed");
+        
         return null
     }
 }
