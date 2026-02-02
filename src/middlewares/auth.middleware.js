@@ -5,7 +5,9 @@ import jwt from "jsonwebtoken";
 
 export const verifyJWT= asyncHandler(async(req, res, next)=>{             //whenever we write middleware we write next(this work is done move to next)
     try {
-        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","");   //used to extarct token from the user with the help of cookies
+        const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");   //used to extarct token from the user with the help of cookies
+        
+        
         if(!token){
             throw new ApiError(401, "Unauthorized request")
         }
@@ -16,7 +18,6 @@ export const verifyJWT= asyncHandler(async(req, res, next)=>{             //when
             //IMPT: 
             throw new ApiError(401, "Invalid Access Token");          
         }
-    
         req.user =user;                           //assign User to the req(so now req can acces id username and all)
         next();            //auth done move to the controller
     } 
