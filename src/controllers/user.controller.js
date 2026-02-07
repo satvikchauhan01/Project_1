@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js"
 import { uploadOnCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 const registerUser=asyncHandler(async(req, res) =>{
      //steps:
@@ -143,6 +144,45 @@ const generateAccessAndRefreshToken =async(userId) =>{
         throw new ApiError(500, "Something went wrong");
     }
 }
+
+const refreshAcessToken= asyncHandler(async(req,res) =>{
+    const IncomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;   //second one is for mobile apps
+    if(!IncomingRefreshToken){
+        throw new ApiError(401,"Unauthorized Request(No refreshToken)");
+    }
+    try {
+        const decodedToken = jwt.verify(IncomingRefreshToken, process.env.ACCESS_TOKEN_SECRET);            
+    
+        const user=User.findById(decodedToken?._id);
+        if(!user){
+            throw new ApiError(401, "Inavlid Refresh Token");
+        }
+        if(IncomingRefreshToken !== user?.refreshToken){
+            throw new ApiError(401, "Refresh Token is expired");
+        }
+    
+        //now all done now generate new access and refresh tokens:
+        const options={
+            httpOnly: true,
+            secure: true
+        }
+        const{accessToken, newrefreshToken} = await(generateAccessAndRefreshToken(user._id));
+    
+        //now return the respones: 
+        return res.status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshtoken", newrefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {accessToken, refreshToken: newrefreshToken},
+                "Access token refreshed"
+            )
+        )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid refreshToken");
+    }
+})
 const loginUser= asyncHandler(async(req, res) =>{
     //steps:
     //1. fetch the data from req.body
@@ -154,7 +194,6 @@ const loginUser= asyncHandler(async(req, res) =>{
 
     //1. fetch data from req.body
         const {email, username, password} =req.body; 
-        console.log(email);
          
     //2. 
         if(!username && !email){
@@ -229,5 +268,5 @@ const logoutUser= asyncHandler(async(req, res) =>{
      
 })
 
-export {registerUser, loginUser, logoutUser}
+export {registerUser, loginUser, logoutUser,refreshAcessToken}
 //Line6 end    
